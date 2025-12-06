@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 // Authentication checks are handled in components instead
-export async function middleware(request: NextRequest) {
+// This proxy runs for every matched request (replaces the old `middleware` export)
+export async function proxy(request: NextRequest) {
   // Simply pass through all requests
-  // Supabase auth will still work in components, just not enforced at middleware level
+  // Supabase auth will still work in components, just not enforced at proxy level
   return NextResponse.next({
     request,
   })
