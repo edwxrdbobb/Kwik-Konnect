@@ -1,5 +1,6 @@
 import { generateObject } from "ai"
 import { z } from "zod"
+import { google } from "@ai-sdk/google"
 
 const cvSchema = z.object({
   summary: z.string().describe("Professional summary highlighting key achievements and career goals"),
@@ -44,15 +45,15 @@ Please enhance and improve this CV with:
 Make it professional, achievement-focused, and tailored for the Sierra Leone job market.`
 
     const { object } = await generateObject({
-      model: "openai/gpt-4o-mini",
+      model: google("gemini-1.5-flash-latest"),
       schema: cvSchema,
       prompt,
       temperature: 0.7,
     })
 
     return Response.json({ cv: object })
-  } catch (error) {
+  } catch (error: any) {
     console.error("[v0] Error generating CV:", error)
-    return Response.json({ error: "Failed to generate CV" }, { status: 500 })
+    return Response.json({ error: error.message || "Failed to generate CV" }, { status: 500 })
   }
 }

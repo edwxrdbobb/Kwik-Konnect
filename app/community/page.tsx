@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dialog"
 import dynamic from "next/dynamic"
 
-const LeafletMap = dynamic(() => import("@/components/leaflet-map"), {
+const MapboxMap = dynamic(() => import("../../components/mapbox-map"), {
   ssr: false,
   loading: () => (
     <div className="h-[700px] flex items-center justify-center bg-muted/20 border-2 rounded-lg">
@@ -318,7 +318,7 @@ export default function CommunityPage() {
                 </div>
               ) : (
                 <div className="h-[700px]">
-                  <LeafletMap
+                  <MapboxMap
                     items={filteredProviders.map(p => ({
                       id: p.id,
                       lat: p.location.lat,
@@ -327,7 +327,7 @@ export default function CommunityPage() {
                       description: `${categories.find(c => c.id === p.category)?.name} • ${p.rating} ★`,
                     }))}
                     height="100%"
-                    center={[8.4606, -13.2324]}
+                    center={{ lat: 8.4606, lng: -13.2324 }}
                     zoom={13}
                   />
                 </div>

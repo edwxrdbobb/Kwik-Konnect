@@ -15,21 +15,8 @@ export const metadata: Metadata = {
   keywords: ["jobs", "career", "AI", "blockchain", "Sierra Leone", "employment", "CV builder", "Kwik Konnect"],
   generator: "v0.app",
   icons: {
-    icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
-    ],
-    apple: "/apple-icon.png",
+    icon: "/logo.svg",
+    apple: "/logo.svg",
   },
 }
 
@@ -47,6 +34,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossOrigin="" />
+      </head>
       <body className={`${inter.className} font-sans antialiased`}>
         <RoleProvider>
           {children}

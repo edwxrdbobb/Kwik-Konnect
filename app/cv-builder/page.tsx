@@ -10,13 +10,14 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Sparkles, Plus, X, Download, Eye, FileText, Briefcase, GraduationCap, User, Save } from "lucide-react"
+import { Sparkles, Plus, X, Download, Eye, FileText, Briefcase, GraduationCap, User, Save, MessageSquare } from "lucide-react"
 import { GlowingEffect } from "@/components/ui/glowing-effect"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
+import { useChat } from '@ai-sdk/react'
 
 interface ProfileData {
   name: string
@@ -55,6 +56,18 @@ export default function CVBuilderPage() {
   const router = useRouter()
   const { toast } = useToast()
 
+  const { messages, input, handleInputChange, handleSubmit, isLoading: isChatLoading } = useChat({
+    api: '/api/chat',
+    body: { profile },
+    initialMessages: [
+      {
+        id: 'welcome',
+        role: 'system',
+        content: `Hey ${profile.name || "there"}! I'm Coach K. I've analyzed your CV draft. Would you like some tips on optimizing it for the Sierra Leone tech market?`
+      }
+    ]
+  })
+
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createClient()
@@ -74,7 +87,7 @@ export default function CVBuilderPage() {
         .from("cvs")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        .order("last_updated", { ascending: false })
         .limit(1)
         .single()
 
@@ -188,19 +201,19 @@ export default function CVBuilderPage() {
         experience:
           cv.experience && cv.experience.length > 0
             ? cv.experience.map((exp: any) => ({
-                title: exp.title || "",
-                company: exp.company || "",
-                period: exp.period || "",
-                description: exp.description || "",
-              }))
+              title: exp.title || "",
+              company: exp.company || "",
+              period: exp.period || "",
+              description: exp.description || "",
+            }))
             : prev.experience,
         education:
           cv.education && cv.education.length > 0
             ? cv.education.map((edu: any) => ({
-                degree: edu.degree || "",
-                school: edu.school || "",
-                year: edu.year || "",
-              }))
+              degree: edu.degree || "",
+              school: edu.school || "",
+              year: edu.year || "",
+            }))
             : prev.education,
       }))
 
@@ -302,16 +315,24 @@ export default function CVBuilderPage() {
       <Header />
       <main className="flex-1 py-6 sm:py-8">
         <div className="container mx-auto px-4">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold sm:text-3xl">AI-Powered CV Builder</h1>
-            <p className="mt-1 text-muted-foreground">
-              Fill in your details and let AI create a professional CV for you
-            </p>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold sm:text-3xl">AI-Powered CV Builder</h1>
+              <p className="mt-1 text-muted-foreground">
+                Fill in your details and let AI create a professional CV for you
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleGenerateCV} disabled={isGenerating} className="gap-2 bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-700 shadow-lg">
+                <Sparkles className="h-4 w-4" />
+                {isGenerating ? "Magic in progress..." : "Magic CV (Gemini)"}
+              </Button>
+            </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+          <div className="grid gap-6 lg:grid-cols-[1fr_400px_350px]">
             {/* Form Section */}
-            <div className="relative">
+            <div className="space-y-6">
               <GlowingEffect
                 spread={40}
                 glow={true}
@@ -562,17 +583,17 @@ export default function CVBuilderPage() {
                 inactiveZone={0.3}
                 borderWidth={2}
               />
-              <Card className="relative">
+              <Card className="relative h-fit">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">CV Preview</CardTitle>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => setShowFullPreview(!showFullPreview)}>
-                        <Eye className="mr-2 h-4 w-4" />
+                        <Eye className="mr-1 h-3 w-3" />
                         {showFullPreview ? "Compact" : "Full"}
                       </Button>
                       <Button size="sm" onClick={handleDownloadPDF} disabled={isDownloading}>
-                        <Download className="mr-2 h-4 w-4" />
+                        <Download className="mr-1 h-3 w-3" />
                         {isDownloading ? "..." : "PDF"}
                       </Button>
                     </div>
@@ -585,7 +606,7 @@ export default function CVBuilderPage() {
                   >
                     {profile.name ? (
                       <div className="space-y-4">
-                        {/* Header */}
+                        {/* ... existing preview content ... */}
                         <div className="border-b-2 border-primary/20 pb-4">
                           <h2 className="text-2xl font-bold text-foreground">{profile.name}</h2>
                           <p className="text-lg text-primary font-medium">{profile.title}</p>
@@ -596,23 +617,21 @@ export default function CVBuilderPage() {
                           </div>
                         </div>
 
-                        {/* Summary */}
                         {profile.summary && (
                           <div>
-                            <h3 className="text-base font-bold text-foreground mb-2">Professional Summary</h3>
-                            <p className="text-muted-foreground leading-relaxed">{profile.summary}</p>
+                            <h3 className="text-base font-bold text-foreground mb-2 text-sm">Professional Summary</h3>
+                            <p className="text-muted-foreground leading-relaxed text-xs">{profile.summary}</p>
                           </div>
                         )}
 
-                        {/* Skills */}
                         {profile.skills.length > 0 && (
                           <div>
-                            <h3 className="text-base font-bold text-foreground mb-2">Skills</h3>
-                            <div className="flex flex-wrap gap-2">
+                            <h3 className="text-base font-bold text-foreground mb-2 text-sm">Skills</h3>
+                            <div className="flex flex-wrap gap-2 text-xs">
                               {profile.skills.map((skill) => (
                                 <span
                                   key={skill}
-                                  className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                                  className="rounded-full bg-primary/10 px-3 py-1 font-medium text-primary"
                                 >
                                   {skill}
                                 </span>
@@ -621,18 +640,17 @@ export default function CVBuilderPage() {
                           </div>
                         )}
 
-                        {/* Experience */}
                         {profile.experience.length > 0 && (
                           <div>
-                            <h3 className="text-base font-bold text-foreground mb-2">Work Experience</h3>
+                            <h3 className="text-base font-bold text-foreground mb-2 text-sm">Work Experience</h3>
                             <div className="space-y-3">
                               {profile.experience.map((exp, idx) => (
                                 <div key={idx} className="border-l-2 border-primary/30 pl-3">
-                                  <h4 className="font-semibold text-foreground">{exp.title}</h4>
-                                  <p className="text-sm text-primary">{exp.company}</p>
-                                  <p className="text-xs text-muted-foreground italic">{exp.period}</p>
+                                  <h4 className="font-semibold text-foreground text-sm">{exp.title}</h4>
+                                  <p className="text-xs text-primary">{exp.company}</p>
+                                  <p className="text-[10px] text-muted-foreground italic">{exp.period}</p>
                                   {exp.description && (
-                                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                                    <p className="mt-1 text-[10px] text-muted-foreground leading-relaxed">
                                       {exp.description}
                                     </p>
                                   )}
@@ -642,16 +660,15 @@ export default function CVBuilderPage() {
                           </div>
                         )}
 
-                        {/* Education */}
                         {profile.education.length > 0 && (
                           <div>
-                            <h3 className="text-base font-bold text-foreground mb-2">Education</h3>
+                            <h3 className="text-base font-bold text-foreground mb-2 text-sm">Education</h3>
                             <div className="space-y-2">
                               {profile.education.map((edu, idx) => (
-                                <div key={idx} className="border-l-2 border-primary/30 pl-3">
+                                <div key={idx} className="border-l-2 border-primary/30 pl-3 text-xs">
                                   <h4 className="font-semibold text-foreground">{edu.degree}</h4>
-                                  <p className="text-sm text-primary">{edu.school}</p>
-                                  <p className="text-xs text-muted-foreground">{edu.year}</p>
+                                  <p className="text-primary">{edu.school}</p>
+                                  <p className="text-muted-foreground">{edu.year}</p>
                                 </div>
                               ))}
                             </div>
@@ -660,11 +677,82 @@ export default function CVBuilderPage() {
                       </div>
                     ) : (
                       <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
-                        <FileText className="mb-2 h-8 w-8" />
-                        <p>Fill in your details to see a preview</p>
+                        <FileText className="mb-2 h-8 w-8 text-primary" />
+                        <p>Fill in your details to see a live preview</p>
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* AI Assistant Section */}
+            <div className="relative lg:sticky lg:top-24 lg:self-start">
+              <GlowingEffect spread={40} glow={true} disabled={false} proximity={80} inactiveZone={0.3} borderWidth={2} />
+              <Card className="relative h-[calc(100vh-140px)] flex flex-col">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+                    AI Career Coach
+                  </CardTitle>
+                  <CardDescription>Get suggestions and interview tips based on your CV</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-hidden flex flex-col p-4 pt-0">
+                  <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 custom-scrollbar">
+                    {messages.map((m: any) => (
+                      <div
+                        key={m.id}
+                        className={`p-3 rounded-2xl border text-sm ${m.role === 'user'
+                          ? 'bg-primary text-primary-foreground ml-4'
+                          : 'bg-muted/50 text-foreground mr-4'
+                          }`}
+                      >
+                        <p className="font-bold mb-1">
+                          {m.role === 'user' ? 'You:' : 'Coach K:'}
+                        </p>
+                        {m.content}
+                      </div>
+                    ))}
+                    {isChatLoading && (
+                      <div className="p-3 rounded-2xl bg-muted/50 border text-sm text-foreground mr-4 animate-pulse">
+                        Coach K is thinking...
+                      </div>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="space-y-4 pt-4 border-t">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-[10px] h-8 bg-transparent border-dashed"
+                        onClick={() => handleInputChange({ target: { value: "Optimize my summary for local tech hubs" } } as any)}
+                      >
+                        Local Insights
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-[10px] h-8 bg-transparent border-dashed"
+                        onClick={() => handleInputChange({ target: { value: "Suggest some industry keywords" } } as any)}
+                      >
+                        Add Keywords
+                      </Button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={input}
+                        onChange={handleInputChange}
+                        placeholder="Ask Coach K..."
+                        className="h-10 text-sm"
+                      />
+                      <Button type="submit" size="icon" className="h-10 w-10 shrink-0" disabled={isChatLoading}>
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </form>
                 </CardContent>
               </Card>
             </div>

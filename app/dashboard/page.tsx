@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase-client"
+import { getDashboardStats, getRecentApplications, getSavedCVs, type DashboardStats } from "./actions"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useRole } from "@/lib/role-context"
@@ -35,19 +36,39 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [userName, setUserName] = useState("Aminata")
 
+  const [stats, setStats] = useState<DashboardStats>({
+    applicationsCount: 0,
+    savedJobsCount: 0,
+    interviewsCount: 0,
+    profileViews: 0
+  })
+  const [recentApplications, setRecentApplications] = useState<any[]>([])
+  const [savedCVs, setSavedCVs] = useState<any[]>([])
+
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthAndFetchData = async () => {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (!session) {
         router.push("/auth/login")
       } else {
         setUserName(session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "User")
+
+        // Fetch dashboard data in parallel
+        const [statsData, applicationsData, cvData] = await Promise.all([
+          getDashboardStats(),
+          getRecentApplications(),
+          getSavedCVs()
+        ])
+
+        setStats(statsData)
+        setRecentApplications(applicationsData)
+        setSavedCVs(cvData)
         setIsLoading(false)
       }
     }
 
-    checkAuth()
+    checkAuthAndFetchData()
   }, [router, supabase])
 
   if (isLoading) {
@@ -55,27 +76,18 @@ export default function DashboardPage() {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground animate-pulse font-medium">Authenticating...</p>
+          <p className="text-muted-foreground animate-pulse font-medium">Loading Dashboard...</p>
         </div>
       </div>
     )
   }
 
-  // Mock data for talent
-  const savedCVs = [
-    { id: "1", name: "Frontend Developer CV", lastEdited: "2 days ago", downloads: 5 },
-    { id: "2", name: "General Application CV", lastEdited: "1 week ago", downloads: 12 },
-  ]
-
+  // Mock data for talent - KEEPING SOME MOCKS FOR VISUALS UNTIL FULL DB POPULATION
+  // Forced update to clear cache
   const suggestedJobs = [
     { id: "1", title: "Frontend Developer", company: "TechSalone", match: "High Match", location: "Freetown" },
     { id: "2", title: "UI/UX Designer", company: "Digital Dreams SL", match: "Good Match", location: "Remote" },
     { id: "3", title: "Community Manager", company: "Christex Foundation", match: "Explore", location: "Freetown" },
-  ]
-
-  const savedJobs = [
-    { id: "1", title: "Frontend Developer", company: "TechSalone", savedAt: "1 day ago" },
-    { id: "2", title: "Data Analyst", company: "Ministry of Health", savedAt: "3 days ago" },
   ]
 
   const recentActivity = [
@@ -157,7 +169,7 @@ export default function DashboardPage() {
                         <Briefcase className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold">12</p>
+                        <p className="text-2xl font-bold">{stats.applicationsCount}</p>
                         <p className="text-xs text-muted-foreground">Applications</p>
                       </div>
                     </div>
@@ -170,7 +182,7 @@ export default function DashboardPage() {
                         <Bookmark className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold">{savedJobs.length}</p>
+                        <p className="text-2xl font-bold">{stats.savedJobsCount}</p>
                         <p className="text-xs text-muted-foreground">Saved Jobs</p>
                       </div>
                     </div>
@@ -272,9 +284,9 @@ export default function DashboardPage() {
                   {savedCVs.map((cv) => (
                     <div key={cv.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                       <div className="flex-1">
-                        <p className="font-medium">{cv.name}</p>
+                        <p className="font-medium">{cv.professional_title || "Untitled CV"}</p>
                         <p className="text-xs text-muted-foreground">
-                          Last edited {cv.lastEdited} • {cv.downloads} downloads
+                          Last updated: {new Date(cv.last_updated).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -345,31 +357,25 @@ export default function DashboardPage() {
               </Card>
 
               {/* Saved jobs */}
+              {/* Saved jobs count view (Simplified for now) */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Bookmark className="h-5 w-5 text-primary" />
                     Saved Jobs
                   </CardTitle>
-                  <CardDescription>Jobs you've bookmarked for later</CardDescription>
+                  <CardDescription>You have {stats.savedJobsCount} saved jobs</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {savedJobs.map((job) => (
-                    <div key={job.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                      <div className="flex-1">
-                        <p className="font-medium">{job.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {job.company} • Saved {job.savedAt}
-                        </p>
-                      </div>
-                      <Link href="/jobs">
-                        <Button size="sm">Apply</Button>
-                      </Link>
-                    </div>
-                  ))}
-                  {savedJobs.length === 0 && (
-                    <p className="py-4 text-center text-sm text-muted-foreground">No saved jobs yet. Start browsing!</p>
-                  )}
+                  {/* We would map actual saved jobs here if we fetched the full list */}
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    {stats.savedJobsCount > 0
+                      ? "Visit Jobs page to view your saved items."
+                      : "No saved jobs yet. Start browsing!"}
+                  </p>
+                  <Link href="/jobs">
+                    <Button variant="outline" className="w-full">Browse Jobs</Button>
+                  </Link>
                 </CardContent>
               </Card>
 

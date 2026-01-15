@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { JobCard } from "@/components/jobs/job-card"
 import dynamic from "next/dynamic"
 
-const LeafletMap = dynamic(() => import("@/components/leaflet-map"), {
+const MapboxMap = dynamic(() => import("../../components/mapbox-map"), {
   ssr: false,
   loading: () => (
     <div className="h-[600px] flex items-center justify-center bg-muted/20 border-2 rounded-lg">
@@ -161,7 +161,7 @@ export default function JobsPage() {
 
               {viewMode === "map" && (
                 <div className="h-[600px]">
-                  <LeafletMap
+                  <MapboxMap
                     items={sampleJobs.map((job, index) => {
                       // Approximate locations for demo purposes
                       const baseLat = 8.46
@@ -178,7 +178,7 @@ export default function JobsPage() {
                       }
                     })}
                     height="100%"
-                    center={[8.46, -13.23]}
+                    center={{ lat: 8.46, lng: -13.23 }}
                   />
                 </div>
               )}

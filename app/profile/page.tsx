@@ -1,6 +1,5 @@
-"use client"
-
-import { useState } from "react"
+"use client";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -11,22 +10,104 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Briefcase, Settings, Camera, Plus, X, Save } from "lucide-react"
+import { User, Briefcase, Settings, Camera, Plus, X, Save, Loader2 } from "lucide-react"
+import { createClient } from "@/lib/supabase-client"
+import { getUserProfile, updateUserProfile, getRecentApplications, getDashboardStats } from "@/app/dashboard/actions"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 export default function ProfilePage() {
-  const [name, setName] = useState("Aminata Kamara")
-  const [email, setEmail] = useState("aminata.kamara@email.com")
-  const [title, setTitle] = useState("Frontend Developer")
-  const [location, setLocation] = useState("Freetown, Sierra Leone")
-  const [bio, setBio] = useState("Passionate about building accessible web applications for Sierra Leone.")
-  const [skills, setSkills] = useState(["React", "TypeScript", "Tailwind CSS", "Next.js"])
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [title, setTitle] = useState("")
+  const [location, setLocation] = useState("")
+  const [bio, setBio] = useState("")
+  const [skills, setSkills] = useState<string[]>([])
+  const [applications, setApplications] = useState<any[]>([])
+  const [stats, setStats] = useState({ applicationsCount: 0, interviewsCount: 0, certificatesCount: 0 })
   const [newSkill, setNewSkill] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
+
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        router.push("/auth/login")
+        return
+      }
+
+      const [profile, apps, statsData] = await Promise.all([
+        getUserProfile(),
+        getRecentApplications(),
+        getDashboardStats()
+      ])
+
+      if (profile) {
+        setName(profile.full_name || "")
+        setEmail(profile.email || session.user.email || "")
+        setTitle(profile.professional_title || "")
+        setLocation(profile.location || "")
+        setBio(profile.bio || "")
+        setSkills(profile.skills || [])
+      }
+      setApplications(apps || [])
+      setStats({
+        applicationsCount: statsData.applicationsCount || 0,
+        interviewsCount: statsData.interviewsCount || 0,
+        certificatesCount: 0
+      })
+      setIsLoading(false)
+    }
+
+    fetchProfileData()
+  }, [router])
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      await updateUserProfile({
+        full_name: name,
+        professional_title: title,
+        location: location,
+        bio: bio,
+        skills: skills,
+      })
+      toast({
+        title: "Profile updated",
+        description: "Your changes have been saved successfully.",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error updating profile",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const addSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
       setSkills((prev) => [...prev, newSkill.trim()])
       setNewSkill("")
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-muted-foreground animate-pulse font-medium">Loading Profile...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -94,15 +175,15 @@ export default function ProfilePage() {
 
                       <div className="mt-6 grid w-full grid-cols-3 gap-2 border-t border-border pt-6 text-center">
                         <div>
-                          <div className="text-xl font-bold text-primary">12</div>
+                          <div className="text-xl font-bold text-primary">{stats.applicationsCount}</div>
                           <div className="text-xs text-muted-foreground">Applied</div>
                         </div>
                         <div>
-                          <div className="text-xl font-bold text-primary">3</div>
+                          <div className="text-xl font-bold text-primary">{stats.interviewsCount}</div>
                           <div className="text-xs text-muted-foreground">Interviews</div>
                         </div>
                         <div>
-                          <div className="text-xl font-bold text-primary">2</div>
+                          <div className="text-xl font-bold text-primary">{stats.certificatesCount}</div>
                           <div className="text-xs text-muted-foreground">Certificates</div>
                         </div>
                       </div>
@@ -172,9 +253,13 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    <Button className="w-full gap-2 sm:w-auto">
-                      <Save className="h-4 w-4" />
-                      Save Changes
+                    <Button className="w-full gap-2 sm:w-auto" onClick={handleSave} disabled={isSaving}>
+                      {isSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      {isSaving ? "Saving..." : "Save Changes"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -189,45 +274,37 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {[
-                      {
-                        title: "Frontend Developer",
-                        company: "TechSalone",
-                        status: "Under Review",
-                        date: "2 days ago",
-                      },
-                      {
-                        title: "Community Manager",
-                        company: "Christex Foundation",
-                        status: "Interview",
-                        date: "1 week ago",
-                      },
-                      {
-                        title: "Data Entry Clerk",
-                        company: "Ministry of Health",
-                        status: "Applied",
-                        date: "2 weeks ago",
-                      },
-                    ].map((app, i) => (
-                      <div
-                        key={i}
-                        className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                            <Briefcase className="h-5 w-5 text-primary" />
+                    {applications.length > 0 ? (
+                      applications.map((app: any, i) => (
+                        <div
+                          key={i}
+                          className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                              <Briefcase className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{app.job?.title}</p>
+                              <p className="text-sm text-muted-foreground">{app.job?.company?.name}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{app.title}</p>
-                            <p className="text-sm text-muted-foreground">{app.company}</p>
+                          <div className="flex items-center justify-between gap-4 sm:justify-end">
+                            <Badge variant={app.status === "interviewing" ? "default" : "secondary"}>
+                              {app.status}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(app.created_at).toLocaleDateString()}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between gap-4 sm:justify-end">
-                          <Badge variant={app.status === "Interview" ? "default" : "secondary"}>{app.status}</Badge>
-                          <span className="text-sm text-muted-foreground">{app.date}</span>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <Briefcase className="mx-auto h-12 w-12 opacity-20" />
+                        <p className="mt-2">No applications yet.</p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </CardContent>
               </Card>
