@@ -1,6 +1,7 @@
 import { generateObject } from "ai"
 import { z } from "zod"
 import { google } from "@ai-sdk/google"
+import { openai } from "@ai-sdk/openai"
 
 const cvSchema = z.object({
   summary: z.string().describe("Professional summary highlighting key achievements and career goals"),
@@ -24,7 +25,7 @@ const cvSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { profile } = await req.json()
+    const { profile, provider = "google" } = await req.json()
 
     const prompt = `Generate a professional CV based on the following information:
     
@@ -44,16 +45,37 @@ Please enhance and improve this CV with:
 
 Make it professional, achievement-focused, and tailored for the Sierra Leone job market.`
 
-    const { object } = await generateObject({
-      model: google("gemini-1.5-flash-latest"),
-      schema: cvSchema,
-      prompt,
-      temperature: 0.7,
-    })
+    // AI Model Selection with Fallback
+    const getModelResult = async (currentProvider: string) => {
+      const model = currentProvider === "openai" ? openai("gpt-4o") : google("gemini-2.5-flash")
+      return await generateObject({
+        model,
+        schema: cvSchema,
+        prompt,
+        temperature: 0.7,
+      })
+    }
 
+    let result
+    try {
+      // Try the specified provider first
+      result = await getModelResult(provider)
+    } catch (error) {
+      console.warn(`[AI Fallback] ${provider} failed, trying fallback...`, error)
+      // If we tried google, try openai. If we tried openai, try google.
+      const fallbackProvider = provider === "google" ? "openai" : "google"
+      try {
+        result = await getModelResult(fallbackProvider)
+      } catch (fallbackError) {
+        console.error(`[AI] Both providers failed:`, fallbackError)
+        throw fallbackError
+      }
+    }
+
+    const { object } = result
     return Response.json({ cv: object })
   } catch (error: any) {
-    console.error("[v0] Error generating CV:", error)
+    console.error("[AI] Error generating CV:", error)
     return Response.json({ error: error.message || "Failed to generate CV" }, { status: 500 })
   }
 }

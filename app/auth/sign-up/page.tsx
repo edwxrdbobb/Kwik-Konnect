@@ -73,7 +73,7 @@ export default function SignUpPage() {
         }
       }
     } catch (error: any) {
-      console.error("[v0] Signup error:", error)
+      console.error("[Auth] Signup error:", error)
       setError(error.message || "Failed to create account")
     } finally {
       setIsLoading(false)

@@ -75,12 +75,12 @@ export async function GET(req: NextRequest) {
     })
 
     if (sortBy === "trending") {
-      transformedPosts.sort((a, b) => b.trendingScore - a.trendingScore)
+      transformedPosts.sort((a: any, b: any) => b.trendingScore - a.trendingScore)
     }
 
     return NextResponse.json(transformedPosts)
   } catch (error: any) {
-    console.error("[v0] API Error fetching posts:", error.message)
+    console.error("[API] Error fetching posts:", error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error("[v0] API Error creating post:", error.message)
+    console.error("[API] Error creating post:", error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

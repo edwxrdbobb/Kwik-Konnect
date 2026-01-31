@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { JobSwiper } from "@/components/jobs/job-swiper"
@@ -88,6 +88,38 @@ export default function JobsPage() {
   const [appliedJobs, setAppliedJobs] = useState<Job[]>([])
   const [skippedJobs, setSkippedJobs] = useState<Job[]>([])
   const [viewMode, setViewMode] = useState<"swipe" | "grid" | "map">("swipe")
+  const [scrapedJobs, setScrapedJobs] = useState<Job[]>([])
+  const [loadingScraped, setLoadingScraped] = useState(false)
+
+  // Load scraped jobs on component mount
+  useEffect(() => {
+    loadScrapedJobs()
+  }, [])
+
+  const loadScrapedJobs = async () => {
+    setLoadingScraped(true)
+    try {
+      const [linkedinResponse, careerslResponse] = await Promise.all([
+        fetch("/api/scrape-jobs/linkedin"),
+        fetch("/api/scrape-jobs/careersl")
+      ])
+
+      const linkedinJobs = linkedinResponse.ok ? await linkedinResponse.json() : { jobs: [] }
+      const careerslJobs = careerslResponse.ok ? await careerslResponse.json() : { jobs: [] }
+
+      const allScrapedJobs = [...(linkedinResponse.ok ? linkedinJobs.jobs || [] : []), 
+                              ...(careerslResponse.ok ? careerslJobs.jobs || [] : [])]
+      
+      setScrapedJobs(allScrapedJobs)
+    } catch (error) {
+      console.error("Failed to load scraped jobs:", error)
+    } finally {
+      setLoadingScraped(false)
+    }
+  }
+
+  // Combine sample jobs with scraped jobs
+  const allJobs = [...sampleJobs, ...scrapedJobs]
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -101,7 +133,10 @@ export default function JobsPage() {
                 <div>
                   <h1 className="text-2xl font-bold sm:text-3xl">Find Your Next Job</h1>
                   <p className="mt-1 text-muted-foreground">
-                    {viewMode === "swipe" ? "Swipe right to apply, left to skip" : `Explore ${sampleJobs.length} available opportunities`}
+                    {viewMode === "swipe" 
+                      ? `Swipe right to apply, left to skip (${allJobs.length} jobs available)` 
+                      : `Explore ${allJobs.length} available opportunities`
+                    }
                   </p>
                 </div>
 
@@ -145,7 +180,7 @@ export default function JobsPage() {
 
               {viewMode === "swipe" && (
                 <JobSwiper
-                  jobs={sampleJobs}
+                  jobs={allJobs}
                   onSwipeLeft={(job) => setSkippedJobs((prev) => [...prev, job])}
                   onSwipeRight={(job) => setAppliedJobs((prev) => [...prev, job])}
                 />
@@ -153,7 +188,7 @@ export default function JobsPage() {
 
               {viewMode === "grid" && (
                 <div className="grid gap-6 sm:grid-cols-2">
-                  {sampleJobs.map((job) => (
+                  {allJobs.map((job) => (
                     <JobCard key={job.id} job={job} className="h-full active:cursor-default" />
                   ))}
                 </div>
@@ -162,7 +197,7 @@ export default function JobsPage() {
               {viewMode === "map" && (
                 <div className="h-[600px]">
                   <MapboxMap
-                    items={sampleJobs.map((job, index) => {
+                    items={allJobs.map((job, index) => {
                       // Approximate locations for demo purposes
                       const baseLat = 8.46
                       const baseLng = -13.23

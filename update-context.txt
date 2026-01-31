@@ -1,0 +1,17 @@
+- Swipe to Apply
+Tinder-style job browsing. Swipe right to apply, left to skip. Quick and intuitive job matching.
+
+- AI Job Matching
+Our AI analyzes your skills and preferences to show you the most relevant opportunities first.
+
+- Smart CV Builder
+Generate professional CVs instantly with AI. Tailored for each job you apply to.
+
+- Blockchain Verification
+Your certificates are hashed and stored on-chain. Employers can verify authenticity instantly.
+
+- QR Code Credentials
+Each verified certificate gets a QR code. Scan to verify — no fraud, no fakes.
+
+-Interview Coach
+Practice with AI mock interviews. Get real-time feedback, scores, and improvement tips.

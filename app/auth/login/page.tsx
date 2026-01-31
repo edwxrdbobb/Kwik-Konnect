@@ -43,7 +43,7 @@ export default function LoginPage() {
         router.refresh()
       }
     } catch (error: any) {
-      console.error("[v0] Login error:", error)
+      console.error("[Auth] Login error:", error)
       setError(error.message || "Invalid email or password")
     } finally {
       setIsLoading(false)

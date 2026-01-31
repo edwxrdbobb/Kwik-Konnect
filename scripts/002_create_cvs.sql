@@ -7,6 +7,7 @@ create table if not exists public.cvs (
   email text not null,
   phone text,
   location text,
+  photo_url text,
   summary text,
   experience jsonb default '[]'::jsonb, -- Array of experience objects
   education jsonb default '[]'::jsonb,  -- Array of education objects

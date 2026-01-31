@@ -65,24 +65,43 @@ export default function InterviewPage() {
 
     setIsEvaluating(true)
 
-    // Simulate AI evaluation
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const response = await fetch("/api/evaluate-answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: currentQuestion.text,
+          answer: currentAnswer,
+          type: currentQuestion.type,
+          provider: "google", // Default to google for speed
+        }),
+      })
 
-    const score = Math.floor(Math.random() * 4) + 6 // 6-10
-    const feedback =
-      score >= 8
-        ? "Excellent response! You demonstrated clear communication and relevant experience."
-        : "Good answer. Consider providing more specific examples and quantifying your achievements."
+      if (!response.ok) throw new Error("Failed to evaluate answer")
+      const result = await response.json()
 
-    setAnswers((prev) => [
-      ...prev,
-      {
-        questionId: currentQuestion.id,
-        text: currentAnswer,
-        score,
-        feedback,
-      },
-    ])
+      setAnswers((prev) => [
+        ...prev,
+        {
+          questionId: currentQuestion.id,
+          text: currentAnswer,
+          score: result.score,
+          feedback: result.feedback,
+        },
+      ])
+    } catch (error) {
+      console.error("Evaluation Error:", error)
+      // Fallback in case of error
+      setAnswers((prev) => [
+        ...prev,
+        {
+          questionId: currentQuestion.id,
+          text: currentAnswer,
+          score: 5,
+          feedback: "Sorry, I couldn't evaluate your response right now. Let's keep going!",
+        },
+      ])
+    }
 
     setCurrentAnswer("")
     setIsEvaluating(false)
